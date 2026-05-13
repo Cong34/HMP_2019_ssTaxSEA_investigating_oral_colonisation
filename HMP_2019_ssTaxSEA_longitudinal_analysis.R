@@ -144,6 +144,8 @@ List_of_longitudinal_subjects <- unique(List_of_longitudinal_subjects)
 HMP_2019_md_longitudinal.df <- HMP_2019_md.df[HMP_2019_md.df$subject_id %in% List_of_longitudinal_subjects,]
 
 # Function that create a metadata df base on the specified visit number: 
+# Some patients data was removed due to low count.
+# Therefore visits around the indicated number are found and used in case it does not exist.
 make_md_longitudinal <- function(time_point) {
   timepoint_list <- c(time_point, time_point-2, time_point-1,  time_point+1, time_point+2, time_point+3)
   df <- HMP_2019_md_longitudinal.df[HMP_2019_md_longitudinal.df$visit_number %in% timepoint_list,]
@@ -177,7 +179,7 @@ run_linda_study_condition_function <- function(mt_df, count_df) {
 # 5. Run TaxSEA and ssTaxSEA: 
 ################################################################################
 # Function that generate ssTaxSEA output given an input metadata: 
-runssTaxSEA_Oral_taxon_only <- function(md) {
+runssTaxSEA_Oral_taxonsets_only <- function(md) {
   
   count_df <- HMP_2019_counts.df[, rownames(md)]
   
@@ -188,9 +190,7 @@ runssTaxSEA_Oral_taxon_only <- function(md) {
   write_important_taxonset <- function( df , x) {
     # df is the input TaxSEA results
     # x is the total of important taxa extract needed.
-    
-    # df <- subset(df, PValue < 0.05) # make sure data is statistically significant.
-    
+  
     # Important list must include significant results,
     high_list <- head(df[order(-df$median_rank_of_set_members), "taxonSetName"], x)    # meaning highest median results
     low_list  <- head(df[order( df$median_rank_of_set_members), "taxonSetName"], x)    # and also lowest median results.
@@ -217,7 +217,7 @@ runssTaxSEA_Oral_taxon_only <- function(md) {
   TaxSEA_results <- ssTaxSEA(counts = count_df, custom_db = Important_taxonset)
   TaxSEA_results <- TaxSEA_results$scores
   
-  TaxSEA_results <- TaxSEA_results[, colnames(TaxSEA_results)
+  TaxSEA_results <- TaxSEA_results[, colnames(TaxSEA_results) # Choose different taxonsets to curate from here
                                        %in% c("mBodyMap_Oral"
                                               # ,"BacDive_facultative anaerobe"
                                               # ,"MiMeDB_producers_of_Serotonin"
@@ -234,31 +234,28 @@ runssTaxSEA_Oral_taxon_only <- function(md) {
   return(TaxSEA_results_merged)
 }
 
-
-
 ################################################################################
 # 6. Curating data for the time series: 
 ################################################################################
+# Interval of 5 visits: 
+# Curating data for every patients:
 md_1 <- make_md_longitudinal(1)
 md_5 <- make_md_longitudinal(5)
 md_10 <- make_md_longitudinal(10)
 md_15 <- make_md_longitudinal(15)
 md_20 <- make_md_longitudinal(20)
-md_last <- last_day_md_only_high_visit
+md_last <- last_day_md_only_high_visit 
 
-# count_df <- HMP_2019_counts.df[, rownames(md_1)]
-# rank_md <- run_linda_study_condition_function(md_1, count_df)
-# TaxSEA_results <- TaxSEA(taxon_ranks = rank_md)
-# TaxSEA_results$Health_associations
+# Run ssTaxSEA for metadata input: 
+ssTaxSEA_output_visit_1 <- runssTaxSEA_Oral_taxonsets_only(md_1)
+ssTaxSEA_output_visit_5 <- runssTaxSEA_Oral_taxonsets_only(md_5)
+ssTaxSEA_output_visit_10 <- runssTaxSEA_Oral_taxonsets_only(md_10)
+ssTaxSEA_output_visit_15 <- runssTaxSEA_Oral_taxonsets_only(md_15)
+ssTaxSEA_output_visit_20 <- runssTaxSEA_Oral_taxonsets_only(md_20)
+ssTaxSEA_output_visit_last <- runssTaxSEA_Oral_taxonsets_only(md_last)
 
-
-ssTaxSEA_output_visit_1 <- runssTaxSEA_Oral_taxon_only(md_1)
-ssTaxSEA_output_visit_5 <- runssTaxSEA_Oral_taxon_only(md_5)
-ssTaxSEA_output_visit_10 <- runssTaxSEA_Oral_taxon_only(md_10)
-ssTaxSEA_output_visit_15 <- runssTaxSEA_Oral_taxon_only(md_15)
-ssTaxSEA_output_visit_20 <- runssTaxSEA_Oral_taxon_only(md_20)
-ssTaxSEA_output_visit_last <- runssTaxSEA_Oral_taxon_only(md_last)
-
+# Each ssTaxSEA output only has 1 taxonsets:
+# Merge all the output into 1 big dataframe: 
 TaxSEA_results_merged <- Reduce(function(x, y) merge(x, y, by = c("subject_id", "disease_subtype"), all = TRUE),
                                 list(ssTaxSEA_output_visit_1,
                                      ssTaxSEA_output_visit_5,
@@ -273,30 +270,28 @@ TaxSEA_results_merged <- TaxSEA_results_merged[order(TaxSEA_results_merged$`dise
 
 TaxSEA_results_dropped <- TaxSEA_results_merged[, -c(1,2)]
 
-# ha = HeatmapAnnotation(study_condition = TaxSEA_results_merged$`disease_subtype `,
-#                        col = list(study_condition = setNames(
-#                          c("#bcc8ff","#aa6f73", "#8e6d3d" ),
-#                          c("Control", "UC", "CD")  
-#                        )),
-#                        annotation_label = "Disease Subtype",
-#                        # annotation_name_side = "left",
-#                        annotation_name_gp =gpar(fontsize = 8, fontface="bold"),
-#                        show_legend = TRUE,
-#                        simple_anno_size = unit(0.4, "cm"),
-#                        border=FALSE
-# )
-# 
-# 
-# 
-# 
-# Heatmap(t(TaxSEA_results_dropped),
-#         name="Enrichment Score",
-#         # show_column_names = FALSE,
-#         cluster_rows = FALSE,
-#         # cluster_columns = FALSE,
-#         row_names_gp = gpar(fontsize = 8),
-#         top_annotation = ha,
-# )
+ha = HeatmapAnnotation(study_condition = TaxSEA_results_merged$`disease_subtype `,
+                       col = list(study_condition = setNames(
+                         c("#bcc8ff","#aa6f73", "#8e6d3d" ), #chosen colors
+                         c("Control", "UC", "CD")  
+                       )),
+                       annotation_label = "Disease Subtype",
+                       # annotation_name_side = "left",
+                       annotation_name_gp =gpar(fontsize = 8, fontface="bold"),
+                       show_legend = TRUE,
+                       simple_anno_size = unit(0.4, "cm"),
+                       border=FALSE
+)
+# Heat map will show the spread of all the patients. 
+# Using this, some patients were selected to observe longitudinal patterns:
+Heatmap(t(TaxSEA_results_dropped),
+        name="Enrichment Score",
+        show_column_names = FALSE,
+        cluster_rows = FALSE,
+        # cluster_columns = FALSE,
+        row_names_gp = gpar(fontsize = 8),
+        top_annotation = ha,
+)
 
 
 ################################################################################
@@ -312,18 +307,21 @@ TaxSEA_results_dropped <- TaxSEA_results_merged[, -c(1,2)]
 ### Disease signature group: "M2034", "E5001", "M2072", "P6024", "H4006", "H4004", "H4018", "P6012", "M2069"
 
 
-
+# Curating individual lists: 
 list_of_patients_increasing = c("P6018", "H4015", "C3011", "C3037", "H4016", "E5013", "C3009", "H4030", "H4027", "H4038")
 list_of_patients_decreasing = c("H4042", "P6016", "P6010", "H4032", "E5004", "C3013", "M2077", "M2027", "H4008", "M2085", "M2047",
                                                   "H4014", "H4023", "H4040", "M2068", "H4024")
 list_of_disease_n_control =  c("M2034", "E5001", "M2072", "P6024", "H4006", "H4004", "H4018", "P6012", "M2069",
                                "M2075", "H4045", "M2061")
 
+# ggplot2 time series:
+# Selected by disease subtype: aggregate all data of each subtype. 
 Timeseries_function <- function(list_of_patients) {
   df <- TaxSEA_results_merged[TaxSEA_results_merged$`subject_id ` %in% list_of_patients,]
   rownames(df) <- df$`subject_id `
   df_dropped <- df[,-c(1,2)]
-  
+
+  # Reformat the data for more correct usage. 
   df_long <- df %>%
     pivot_longer(
       cols = starts_with("Timepoint"),
@@ -343,7 +341,7 @@ Timeseries_function <- function(list_of_patients) {
     geom_line(alpha = 0.3) +
     geom_point(alpha = 0.3) +
     scale_color_brewer(palette = "Set2") +
-    stat_summary( aes(group = `disease_subtype `, color = `disease_subtype `),
+    stat_summary( aes(group = `disease_subtype `, color = `disease_subtype `), # Making the aggregate line stand out for each subtype. 
                   fun = mean, geom = "line", linewidth = 1.5) + 
     stat_summary( aes(group = `disease_subtype `, color = `disease_subtype `),
                   fun = mean, geom = "point") +
