@@ -44,4 +44,5 @@ TaxSEA was applied to last-day samples from all IBD patients to identify enriche
 
 ### Step 3 — Longitudinal stability
 
-A time-series analysis tracks how oral colonisation changes (or persists) across sampling time points, providing a measure of colonisation stability over the study period.
+A time-series analysis on the HMP-2019 dataset that tracks how oral colonisation changes (or persists) across sampling time points. 
+
