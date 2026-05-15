@@ -2,7 +2,7 @@
 > HMP-2019 microbiome analysis using ssTaxSEA
 ## Overview
 
-This project applies **ssTaxSEA** (subject-specific TaxSEA) to characterise oral microbiota in inflammatory bowel disease (IBD) patients using the HMP-2019 dataset. Where TaxSEA identifies important taxon sets from differential abundance analysis, ssTaxSEA extends this to pinpoint the specific subjects harbouring those taxa — enabling personalised microbial profiling.
+This project applies **ssTaxSEA** (single sample TaxSEA) to characterise oral microbiota in inflammatory bowel disease (IBD) patients using the HMP-2019 dataset. Where TaxSEA identifies important taxon sets from differential abundance analysis, ssTaxSEA extends this to pinpoint the specific samples enriched those taxa — enabling personalised microbial profiling.
 
 ## Goals
 
